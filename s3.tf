@@ -1,7 +1,7 @@
 module "s3_concept_data_uploads_bucket" {
   source             = "github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket?ref=v9.0.0"
   bucket_prefix      = "${var.name}-data-concept-uploads-${local.environment_shorthand}-"
-  custom_kms_key     = aws_kms_key.shared_kms_key.arn
+  custom_kms_key     = var.kms_key_arn
   versioning_enabled = true
 
   # to disable ACLs in preference of BucketOwnership controls as per https://aws.amazon.com/blogs/aws/heads-up-amazon-s3-security-changes-are-coming-in-april-of-2023/ set:
@@ -64,7 +64,7 @@ module "s3_concept_data_uploads_bucket" {
 module "s3_concept_data_output_bucket" {
   source             = "github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket?ref=v9.0.0"
   bucket_prefix      = "${var.name}-data-concept-output-${local.environment_shorthand}-"
-  custom_kms_key     = aws_kms_key.shared_kms_key.arn
+  custom_kms_key     = var.kms_key_arn
   versioning_enabled = true
 
   # to disable ACLs in preference of BucketOwnership controls as per https://aws.amazon.com/blogs/aws/heads-up-amazon-s3-security-changes-are-coming-in-april-of-2023/ set:
