@@ -1,4 +1,4 @@
-# Modernisation Platform Terraform Module Template
+# Modernisation Platform Terraform Module - CSV-TO-PARQUET-ATHENA
 
 [![Standards Icon]][Standards Link] [![Format Code Icon]][Format Code Link] [![Scorecards Icon]][Scorecards Link] [![SCA Icon]][SCA Link] [![Terraform SCA Icon]][Terraform SCA Link]
 
@@ -6,12 +6,21 @@
 
 ```hcl
 
-module "template" {
+module "csv-to-parquet-athena" {
 
-  source = "github.com/ministryofjustice/modernisation-platform-terraform-module-template"
+  source = "github.com/ministryofjustice/terraform-csv-to-parquet-athena?ref=develop"
 
-  tags             = local.tags
-  application_name = local.application_name
+  name                  = "name-of-your-application"
+  kms_key_arn           = "kms-key-arn"
+  load_mode             = "full" or "overwrite"
+
+  tags = {
+    business-unit = "example"
+    application   = "example"
+    is-production = "false"
+    owner         = "<team-name>: <team-email>"
+  }
+}
 
 }
 
@@ -26,35 +35,14 @@ module "template" {
 If you're looking to raise an issue with this module, please create a new issue in the [Modernisation Platform repository](https://github.com/ministryofjustice/modernisation-platform/issues).
 
 <!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.0 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.0 |
-
-## Providers
-
-No providers.
-
-## Modules
-
-No modules.
-
-## Resources
-
-No resources.
-
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_application_name"></a> [application\_name](#input\_application\_name) | Name of application | `string` | n/a | yes |
+| <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | The ARN of the KMS key to use for CSV export | `string` | n/a | yes |
+| <a name="input_load_mode"></a> [load\_mode](#input\_load\_mode) | n/a | `string` | `"incremental"` | no |
+| <a name="input_name"></a> [name](#input\_name) | n/a | `string` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | Common tags to be used by all resources | `map(string)` | n/a | yes |
-
-## Outputs
-
-No outputs.
 <!-- END_TF_DOCS -->
 
 [Standards Link]: https://github-community.service.justice.gov.uk/repository-standards/modernisation-platform-terraform-module-template "Repo standards badge."
