@@ -1,6 +1,6 @@
 module "s3_concept_data_uploads_bucket" {
   source             = "github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket?ref=v9.0.0"
-  bucket_prefix      = "${var.name}-data-concept-uploads-${var.environment}-"
+  bucket_prefix      = "${var.name}-data-uploads-${var.environment}-"
   custom_kms_key     = var.kms_key_arn
   versioning_enabled = true
 
@@ -63,7 +63,7 @@ module "s3_concept_data_uploads_bucket" {
 
 module "s3_concept_data_output_bucket" {
   source             = "github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket?ref=v9.0.0"
-  bucket_prefix      = "${var.name}-data-concept-output-${var.environment}-"
+  bucket_prefix      = "${var.name}-data-output-${var.environment}-"
   custom_kms_key     = var.kms_key_arn
   versioning_enabled = true
 
