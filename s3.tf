@@ -1,5 +1,5 @@
 module "s3_concept_data_uploads_bucket" {
-  source             = "github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket?ref=f759060"
+  source             = "github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket?ref=v9.0.0"
   bucket_prefix      = "${var.name}-data-concept-uploads-${local.environment_shorthand}-"
   custom_kms_key     = aws_kms_key.shared_kms_key.arn
   versioning_enabled = true
