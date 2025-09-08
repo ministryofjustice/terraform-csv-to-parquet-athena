@@ -50,7 +50,7 @@ data "aws_iam_policy_document" "csv_to_parquet_lambda_function" {
 module "csv-to-parquet-export" {
   
   # Commit hash for v7.20.1
-  source = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda?ref=84dfbfddf9483bc56afa0aff516177c03652f0c7"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda?ref=v8.1.0"
 
   function_name   = "${var.name}-csv-to-parquet"
   description     = "Lambda to export data for ${var.name}"
@@ -111,7 +111,7 @@ data "aws_iam_policy_document" "upload_checker_lambda_function" {
 
 module "upload_checker" {
   # Commit hash for v7.20.1
-  source = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda?ref=84dfbfddf9483bc56afa0aff516177c03652f0c7"
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda?ref=v8.1.0"
 
   function_name   = "${var.name}-upload-checker"
   description     = "Lambda to check if a file have been uploaded to the S3 bucket"
