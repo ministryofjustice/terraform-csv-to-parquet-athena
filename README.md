@@ -54,7 +54,7 @@ If you're looking to raise an issue with this module, please create a new issue 
 |------|--------|---------|
 | <a name="module_csv-to-parquet-export"></a> [csv-to-parquet-export](#module\_csv-to-parquet-export) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | 84dfbfddf9483bc56afa0aff516177c03652f0c7 |
 | <a name="module_s3_concept_data_output_bucket"></a> [s3\_concept\_data\_output\_bucket](#module\_s3\_concept\_data\_output\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | f759060 |
-| <a name="module_s3_concept_data_uploads_bucket"></a> [s3\_concept\_data\_uploads\_bucket](#module\_s3\_concept\_data\_uploads\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | f759060 |
+| <a name="module_s3_concept_data_uploads_bucket"></a> [s3\_concept\_data\_uploads\_bucket](#module\_s3\_concept\_data\_uploads\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | v9.0.0 |
 | <a name="module_upload_checker"></a> [upload\_checker](#module\_upload\_checker) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | 84dfbfddf9483bc56afa0aff516177c03652f0c7 |
 
 ## Resources
