@@ -6,10 +6,10 @@ data "aws_iam_policy_document" "csv_to_parquet_lambda_function" {
       "s3:PutObject", "s3:AbortMultipartUpload", "s3:ListBucketMultipartUploads"
     ]
     resources = [
-      "${module.s3_concept_data_uploads_bucket.bucket.ar}",
-      "${module.s3_concept_data_uploads_bucket.bucket.ar}/*",
-      "${module.s3_concept_data_output_bucket.bucket.ar}",
-      "${module.s3_concept_data_output_bucket.bucket.ar}/*",
+      "${module.s3_concept_data_uploads_bucket.bucket.arn}",
+      "${module.s3_concept_data_uploads_bucket.bucket.arn}/*",
+      "${module.s3_concept_data_output_bucket.bucket.arn}",
+      "${module.s3_concept_data_output_bucket.bucket.arn}/*",
     ]
   }
     
@@ -23,7 +23,7 @@ data "aws_iam_policy_document" "csv_to_parquet_lambda_function" {
           "kms:DescribeKey"
     ]
     resources = [
-      "${module.s3_concept_data_uploads_bucket.bucket.ar}",
+      "${module.s3_concept_data_uploads_bucket.bucket.arn}",
     ]
   }
 
@@ -88,8 +88,8 @@ data "aws_iam_policy_document" "upload_checker_lambda_function" {
     ]
 
     resources = [
-      "${module.s3_concept_data_uploads_bucket.bucket.ar}",
-      "${module.s3_concept_data_uploads_bucket.bucket.ar}/*",
+      "${module.s3_concept_data_uploads_bucket.bucket.arn}",
+      "${module.s3_concept_data_uploads_bucket.bucket.arn}/*",
     ]
   }
 
@@ -141,7 +141,7 @@ resource "aws_lambda_permission" "allow_bucket" {
   action        = "lambda:InvokeFunction"
   function_name = module.upload_checker.lambda_function_arn
   principal     = "s3.amazonaws.com"
-  source_arn    = module.s3_concept_data_uploads_bucket.bucket.ar
+  source_arn    = module.s3_concept_data_uploads_bucket.bucket.arn
 }
 
 # Bucket Notification to trigger Lambda function
