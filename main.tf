@@ -74,7 +74,7 @@ module "csv-to-parquet-export" {
   }]
 
   layers = [
-    "arn:aws:lambda:${data.aws_region.current.name}:336392948345:layer:AWSSDKPandas-Python312:18"
+    "arn:aws:lambda:${data.aws_region.current.id}:336392948345:layer:AWSSDKPandas-Python312:18"
   ]
 
 }
