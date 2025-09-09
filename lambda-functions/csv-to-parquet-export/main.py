@@ -181,8 +181,6 @@ def move_to_raw_history(
     bucket: str,
     src_key: str,
     table_name: str,
-    extraction_ts_dt,
-    kms_sse: bool = False,
     dest_bucket: str | None = None,
 ):
     """
@@ -228,19 +226,18 @@ def handler(event, context):
       "output_bucket": "...",
       "name": "concept",
       "load_mode": "incremental" | "overwrite",
-      "encoding": "utf-8"                          # optional
     }
     """
     try:
+        logger.info(f"Received event: {event}")
+
         csv_bucket = event["csv_upload_bucket"]
         csv_key = event["csv_upload_key"]
         out_bucket = event["output_bucket"]
         forced_encoding = event.get("encoding") or os.getenv("CSV_ENCODING")
-        load_mode = LOAD_MODE.lower()
+        load_mode = event.get("load_mode", LOAD_MODE).lower()
 
         base_name, ts_from_key = parse_key(csv_key)
-
-        # Parse the 14-digit timestamp from filename to a pandas/Arrow-friendly datetime
         extraction_ts_dt = pd.to_datetime(ts_from_key, format="%Y%m%d%H%M%S", utc=False)
 
         table_name = sanitize_table_name(base_name)
@@ -251,28 +248,44 @@ def handler(event, context):
         table_prefix = f"{base_prefix}{table_name}/"
         dataset_root = f"s3://{out_bucket}/{table_prefix}"
 
-        # Ensure DB exists
-        ensure_database(glue_db)
+        logger.info(
+            f"Processing file {input_path} "
+            f"-> table={table_name}, db={glue_db}, mode={load_mode}, dest={dataset_root}"
+        )
 
-        # ---- NEW: load_mode handling ----
+        # Ensure Glue database exists
+        ensure_database(glue_db)
+        logger.debug(f"Ensured Glue database: {glue_db}")
+
         if load_mode == "overwrite":
-            # 1) Delete all data under the table's prefix
+            logger.info(f"Overwriting existing dataset at {dataset_root}")
             _delete_prefix(out_bucket, table_prefix)
-            # 2) Drop the Glue table so old partitions/schema are removed
             wr.catalog.delete_table_if_exists(database=glue_db, table=table_name)
         elif load_mode != "incremental":
             raise ValueError("load_mode must be 'incremental' or 'overwrite'")
 
-        # Robust CSV read + cleanup
+        # Read CSV
+        logger.info(
+            f"Reading CSV from {input_path} with encodings {forced_encoding or 'auto-detect'}"
+        )
         df = read_csv_safely(input_path, explicit_encoding=forced_encoding)
+        logger.info(
+            f"Loaded DataFrame with {len(df)} rows and {len(df.columns)} columns"
+        )
+
+        # Clean + normalize
         df = _clean_nbsp_and_strip(df)
         df = _deduplicate_columns(df)
         df = _stabilize_dtypes(df)
+        logger.debug(f"Columns after cleanup: {df.columns.tolist()}")
 
-        # Add partition column
+        # Add partition col
         df["extraction_timestamp"] = extraction_ts_dt
 
-        # Write Parquet + update Glue catalog
+        # Write parquet
+        logger.info(
+            f"Writing Parquet to {dataset_root} with partition extraction_timestamp={extraction_ts_dt}"
+        )
         wr.s3.to_parquet(
             df=df,
             path=dataset_root,
@@ -282,15 +295,19 @@ def handler(event, context):
             table=table_name,
             schema_evolution=True,
         )
+        logger.info(
+            f"Successfully wrote {len(df)} records to Glue table {glue_db}.{table_name}"
+        )
 
-        # Archive file after successfully writing to Glue table
-        move_to_raw_history(
+        # Archive
+        result = move_to_raw_history(
             bucket=csv_bucket,
             src_key=csv_key,
             table_name=table_name,
             extraction_ts_dt=extraction_ts_dt,
         )
+        logger.info(f"Archived source file to {result['archived_to']}")
 
     except Exception as e:
-        logger.error(f"Error converting CSV to Parquet: {str(e)}")
+        logger.exception(f"Error converting CSV to Parquet: {str(e)}")
         raise
