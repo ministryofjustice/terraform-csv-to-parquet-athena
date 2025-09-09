@@ -31,7 +31,7 @@ data "aws_iam_policy_document" "csv_to_parquet_lambda_function" {
     sid     = "GlueCatalog"
     actions = [
       "glue:GetDatabase","glue:CreateDatabase", "glue:BatchCreatePartition",
-      "glue:GetTable","glue:CreateTable","glue:UpdateTable"
+      "glue:GetTable","glue:CreateTable","glue:UpdateTable","glue:DeleteTable"
     ]
     resources = ["*"]
   }
