@@ -20,10 +20,13 @@ data "aws_iam_policy_document" "csv_to_parquet_lambda_function" {
           "kms:Decrypt",
           "kms:GenerateDataKey",
           "kms:ReEncrypt*",
-          "kms:DescribeKey"
+          "kms:DescribeKey",
     ]
     resources = [
       "${module.s3_concept_data_uploads_bucket.bucket.arn}",
+      "${module.s3_concept_data_uploads_bucket.bucket.arn}/*",
+      "${module.s3_concept_data_output_bucket.bucket.arn}",
+      "${module.s3_concept_data_output_bucket.bucket.arn}/*",
     ]
   }
 
