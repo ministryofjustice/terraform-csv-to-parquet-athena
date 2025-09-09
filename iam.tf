@@ -36,3 +36,16 @@ resource "aws_lambda_permission" "allow_sfn_invoke" {
   principal     = "states.amazonaws.com"
   source_arn    = aws_sfn_state_machine.csv_to_parquet_export.arn
 }
+
+data "aws_iam_policy_document" "lambda_kms" {
+  statement {
+    sid     = "KmsSourceDecrypt"
+    actions = ["kms:Decrypt", "kms:DescribeKey", "kms:GenerateDataKey"]
+    resources = [var.kms_key_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_kms" {
+  role   = module.csv-to-parquet-export.lambda_role_name
+  policy = data.aws_iam_policy_document.lambda_kms.json
+}
