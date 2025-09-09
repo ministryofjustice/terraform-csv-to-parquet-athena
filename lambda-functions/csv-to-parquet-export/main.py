@@ -176,6 +176,48 @@ def _stabilize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def move_to_raw_history(
+    *,
+    bucket: str,
+    src_key: str,
+    table_name: str,
+    extraction_ts_dt,
+    kms_sse: bool = False,
+    dest_bucket: str | None = None,
+):
+    """
+    Move s3://bucket/src_key -> s3://(dest_bucket or bucket)/raw_history/<table>/<filename>
+    """
+    filename = src_key.split("/")[-1]
+    dest_bucket = dest_bucket or bucket
+    dest_key = f"raw_history/{table_name}/{filename}"
+
+    # Guard: don't delete if src and dest resolve to the same object
+    if bucket == dest_bucket and src_key == dest_key:
+        raise ValueError(
+            f"Source and destination are identical: s3://{bucket}/{src_key}"
+        )
+
+    # Prepare copy args
+    copy_source = {"Bucket": bucket, "Key": src_key}
+
+    # 1) Copy
+    s3.copy_object(
+        Bucket=dest_bucket,
+        Key=dest_key,
+        CopySource=copy_source,  # or use the quoted string variant
+        MetadataDirective="COPY",
+    )
+
+    # 2) Verify destination exists before deleting source
+    s3.head_object(Bucket=dest_bucket, Key=dest_key)
+
+    # 3) Delete source
+    s3.delete_object(Bucket=bucket, Key=src_key)
+
+    return {"archived_to": f"s3://{dest_bucket}/{dest_key}"}
+
+
 def handler(event, context):
     """
     Event:
@@ -239,23 +281,15 @@ def handler(event, context):
             database=glue_db,
             table=table_name,
             schema_evolution=True,
-            # e.g., max_rows_by_file=500_000,
         )
 
-        # Archive file after succesffully writeen to glue table
-        date_path = extraction_ts_dt.strftime("%Y/%m/%d")
-        filename = csv_key.split("/")[-1]
-        base_prefix = "raw_history/"
-        dest_key = f"{base_prefix}{table_name}/{date_path}/{filename}"
-        s3.copy_object(
-            Bucket=csv_bucket,
-            Key=dest_key,
-            CopySource={"Bucket": csv_bucket, "Key": csv_key},
-            MetadataDirective="COPY",
+        # Archive file after successfully writing to Glue table
+        move_to_raw_history(
+            bucket=csv_bucket,
+            src_key=csv_key,
+            table_name=table_name,
+            extraction_ts_dt=extraction_ts_dt,
         )
-
-        # Delete original
-        s3.delete_object(Bucket=csv_bucket, Key=csv_key)
 
     except Exception as e:
         logger.error(f"Error converting CSV to Parquet: {str(e)}")
