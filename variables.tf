@@ -25,3 +25,8 @@ variable "environment" {
   type        = string
   description = "Deployment environment (e.g., dev, test, staging, prod). Used for resource naming, tagging, and conditional settings."
 }
+
+variable "provider" {
+  type        = string
+  description = "aws provider name"
+}

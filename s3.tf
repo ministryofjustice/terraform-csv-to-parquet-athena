@@ -16,7 +16,7 @@ module "s3_concept_data_uploads_bucket" {
     # source bucket. On the other hand, if you need to enable cross-region replication, please contact the Modernisation
     # Platform team to add a new provider for the additional Region.
     # Leave this provider block in even if you are not using replication
-    aws.bucket-replication = aws
+    aws.bucket-replication = var.provider
   }
 
   lifecycle_rule = [
@@ -79,7 +79,7 @@ module "s3_concept_data_output_bucket" {
     # source bucket. On the other hand, if you need to enable cross-region replication, please contact the Modernisation
     # Platform team to add a new provider for the additional Region.
     # Leave this provider block in even if you are not using replication
-    aws.bucket-replication = aws
+    aws.bucket-replication = var.provider
   }
 
   lifecycle_rule = [
