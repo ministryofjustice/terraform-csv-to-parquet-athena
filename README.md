@@ -83,6 +83,7 @@ If you're looking to raise an issue with this module, please create a new issue 
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | The ARN of the KMS key to use for CSV export | `string` | n/a | yes |
 | <a name="input_load_mode"></a> [load\_mode](#input\_load\_mode) | n/a | `string` | `"incremental"` | no |
 | <a name="input_name"></a> [name](#input\_name) | n/a | `string` | n/a | yes |
+| <a name="input_provider"></a> [provider](#input\_provider) | aws provider name | `string` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | Common tags to be used by all resources | `map(string)` | n/a | yes |
 
 ## Outputs
