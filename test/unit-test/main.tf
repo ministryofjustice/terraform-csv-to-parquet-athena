@@ -3,4 +3,8 @@ module "module_test" {
   source           = "../../"
   application_name = local.application_name
   tags             = var.tags
+  
+  providers = {
+    aws = aws.testing-ci-user
+  }
 }
