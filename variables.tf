@@ -1,5 +1,5 @@
-variable "name" { 
-    type = string 
+variable "name" {
+  type = string
 }
 
 variable "kms_key_arn" {
@@ -8,8 +8,8 @@ variable "kms_key_arn" {
 }
 
 variable "load_mode" {
-  type        = string
-  default     = "incremental"
+  type    = string
+  default = "incremental"
   validation {
     condition     = contains(["incremental", "overwrite"], var.load_mode)
     error_message = "load_mode must be one of: incremental, overwrite"

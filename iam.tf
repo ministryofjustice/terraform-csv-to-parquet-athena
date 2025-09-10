@@ -39,8 +39,8 @@ resource "aws_lambda_permission" "allow_sfn_invoke" {
 
 data "aws_iam_policy_document" "lambda_kms" {
   statement {
-    sid     = "KmsSourceDecrypt"
-    actions = ["kms:Decrypt", "kms:DescribeKey", "kms:GenerateDataKey"]
+    sid       = "KmsSourceDecrypt"
+    actions   = ["kms:Decrypt", "kms:DescribeKey", "kms:GenerateDataKey"]
     resources = [var.kms_key_arn]
   }
 }

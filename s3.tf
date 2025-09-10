@@ -3,9 +3,6 @@ module "s3_concept_data_uploads_bucket" {
   bucket_prefix      = "${var.name}-data-uploads-${var.environment}-"
   custom_kms_key     = var.kms_key_arn
   versioning_enabled = true
-  providers = {
-    aws.bucket-replication = aws
-  }
 
   # to disable ACLs in preference of BucketOwnership controls as per https://aws.amazon.com/blogs/aws/heads-up-amazon-s3-security-changes-are-coming-in-april-of-2023/ set:
   ownership_controls = "BucketOwnerEnforced"
@@ -69,9 +66,7 @@ module "s3_concept_data_output_bucket" {
   bucket_prefix      = "${var.name}-data-output-${var.environment}-"
   custom_kms_key     = var.kms_key_arn
   versioning_enabled = true
-  providers = {
-    aws.bucket-replication = aws
-  }
+
   # to disable ACLs in preference of BucketOwnership controls as per https://aws.amazon.com/blogs/aws/heads-up-amazon-s3-security-changes-are-coming-in-april-of-2023/ set:
   ownership_controls = "BucketOwnerEnforced"
 

@@ -1,6 +1,6 @@
 data "aws_iam_policy_document" "csv_to_parquet_lambda_function" {
   statement {
-    sid     = "S3ReadSourceWriteDest"
+    sid = "S3ReadSourceWriteDest"
     actions = [
       "s3:ListBucket", "s3:GetObject", "s3:GetBucketLocation", "s3:DeleteObject",
       "s3:PutObject", "s3:AbortMultipartUpload", "s3:ListBucketMultipartUploads"
@@ -12,15 +12,15 @@ data "aws_iam_policy_document" "csv_to_parquet_lambda_function" {
       "${module.s3_concept_data_output_bucket.bucket.arn}/*",
     ]
   }
-    
+
   statement {
-    sid     = "KMSEncryptDecrypt"
+    sid = "KMSEncryptDecrypt"
     actions = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:GenerateDataKey",
-          "kms:ReEncrypt*",
-          "kms:DescribeKey",
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+      "kms:ReEncrypt*",
+      "kms:DescribeKey",
     ]
     resources = [
       "${module.s3_concept_data_uploads_bucket.bucket.arn}",
@@ -31,23 +31,23 @@ data "aws_iam_policy_document" "csv_to_parquet_lambda_function" {
   }
 
   statement {
-    sid     = "GlueCatalog"
+    sid = "GlueCatalog"
     actions = [
-      "glue:GetDatabase","glue:CreateDatabase", "glue:BatchCreatePartition",
-      "glue:GetTable","glue:CreateTable","glue:UpdateTable","glue:DeleteTable"
+      "glue:GetDatabase", "glue:CreateDatabase", "glue:BatchCreatePartition",
+      "glue:GetTable", "glue:CreateTable", "glue:UpdateTable", "glue:DeleteTable"
     ]
     resources = ["*"]
   }
 
   statement {
-    sid     = "Logs"
-    actions = ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"]
+    sid       = "Logs"
+    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["*"]
   }
 }
 
 module "csv-to-parquet-export" {
-  
+
   # Commit hash for v7.20.1
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda?ref=v8.1.0"
 
@@ -64,8 +64,8 @@ module "csv-to-parquet-export" {
   policy_json        = data.aws_iam_policy_document.csv_to_parquet_lambda_function.json
 
   environment_variables = {
-    GLUE_DATABASE                  = var.name
-    LOAD_MODE                      = var.load_mode
+    GLUE_DATABASE = var.name
+    LOAD_MODE     = var.load_mode
   }
 
   source_path = [{
@@ -150,7 +150,7 @@ resource "aws_lambda_permission" "allow_bucket" {
 # Bucket Notification to trigger Lambda function
 resource "aws_s3_bucket_notification" "csv_uploads" {
   bucket = module.s3_concept_data_uploads_bucket.bucket.id
-  
+
   lambda_function {
     lambda_function_arn = module.upload_checker.lambda_function_arn
     events              = ["s3:ObjectCreated:*"]
