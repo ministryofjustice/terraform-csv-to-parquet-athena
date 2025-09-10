@@ -7,3 +7,6 @@ terraform {
   }
   required_version = "~> 1.0"
 }
+provider "aws" {
+  region = data.aws_region.current  # e.g., "eu-west-2"
+}
