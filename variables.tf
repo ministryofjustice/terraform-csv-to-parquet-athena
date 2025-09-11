@@ -26,11 +26,6 @@ variable "environment" {
   description = "Deployment environment (e.g., dev, test, staging, prod). Used for resource naming, tagging, and conditional settings."
 }
 
-variable "region_primary" {
-  type        = string
-  description = "AWS Region code for primary deployment (e.g., eu-west-2)."
-}
-
 variable "region_replication" {
   type        = string
   description = "AWS Region code for the replication target."
