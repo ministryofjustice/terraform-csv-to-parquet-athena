@@ -11,13 +11,13 @@ module "s3_concept_data_uploads_bucket" {
   replication_enabled = false
   # Below variable and providers configuration is only relevant if 'replication_enabled' is set to true
   # replication_region                       = "eu-west-2"
-  providers = {
-    # Here we use the default provider Region for replication. Destination buckets can be within the same Region as the
-    # source bucket. On the other hand, if you need to enable cross-region replication, please contact the Modernisation
-    # Platform team to add a new provider for the additional Region.
-    # Leave this provider block in even if you are not using replication
-    aws.bucket-replication = aws
-  }
+  # providers = {
+  #   # Here we use the default provider Region for replication. Destination buckets can be within the same Region as the
+  #   # source bucket. On the other hand, if you need to enable cross-region replication, please contact the Modernisation
+  #   # Platform team to add a new provider for the additional Region.
+  #   # Leave this provider block in even if you are not using replication
+  #   aws.bucket-replication = aws
+  # }
 
   lifecycle_rule = [
     {
@@ -74,13 +74,13 @@ module "s3_concept_data_output_bucket" {
   replication_enabled = false
   # Below variable and providers configuration is only relevant if 'replication_enabled' is set to true
   # replication_region                       = "eu-west-2"
-  providers = {
-    # Here we use the default provider Region for replication. Destination buckets can be within the same Region as the
-    # source bucket. On the other hand, if you need to enable cross-region replication, please contact the Modernisation
-    # Platform team to add a new provider for the additional Region.
-    # Leave this provider block in even if you are not using replication
-    aws.bucket-replication = aws
-  }
+  # providers = {
+  #   # Here we use the default provider Region for replication. Destination buckets can be within the same Region as the
+  #   # source bucket. On the other hand, if you need to enable cross-region replication, please contact the Modernisation
+  #   # Platform team to add a new provider for the additional Region.
+  #   # Leave this provider block in even if you are not using replication
+  #   aws.bucket-replication = aws
+  # }
 
   lifecycle_rule = [
     {

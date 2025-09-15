@@ -8,7 +8,7 @@ terraform {
   required_version = "~> 1.0"
 }
 
-provider "aws" {
-  alias  = "bucket-replication"
-  region = var.region_replication
-}
+# provider "aws" {
+#   alias  = "bucket-replication"
+#   region = var.region_replication
+# }
