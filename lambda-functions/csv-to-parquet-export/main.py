@@ -303,8 +303,7 @@ def handler(event, context):
         result = move_to_raw_history(
             bucket=csv_bucket,
             src_key=csv_key,
-            table_name=table_name,
-            extraction_ts_dt=extraction_ts_dt,
+            table_name=table_name
         )
         logger.info(f"Archived source file to {result['archived_to']}")
 
