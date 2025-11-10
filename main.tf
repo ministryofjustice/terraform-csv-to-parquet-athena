@@ -109,8 +109,7 @@ data "aws_iam_policy_document" "upload_checker_lambda_function" {
 }
 
 module "upload_checker" {
-  # Commit hash for v7.20.1
-  source = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda?ref=v8.1.0"
+  source = "https://github.com/terraform-aws-modules/terraform-aws-lambda/commit/a7db1252f2c2048ab9a61254869eea061eae1318"
 
   function_name   = "${var.name}-upload-checker"
   description     = "Lambda to check if a file have been uploaded to the S3 bucket"
