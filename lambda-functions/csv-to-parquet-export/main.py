@@ -299,13 +299,14 @@ def handler(event, context):
             f"Successfully wrote {len(df)} records to Glue table {glue_db}.{table_name}"
         )
 
-        # Archive
-        result = move_to_raw_history(
-            bucket=csv_bucket,
-            src_key=csv_key,
-            table_name=table_name
-        )
-        logger.info(f"Archived source file to {result['archived_to']}")
+        # These causes a double trigger for the file, as its written to ther upload bucket. Removed until 
+        # we add an archive bucket
+        # result = move_to_raw_history(
+        #     bucket=csv_bucket,
+        #     src_key=csv_key,
+        #     table_name=table_name
+        # )
+        # logger.info(f"Archived source file to {result['archived_to']}")
 
     except Exception as e:
         logger.exception(f"Error converting CSV to Parquet: {str(e)}")
