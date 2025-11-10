@@ -52,10 +52,10 @@ If you're looking to raise an issue with this module, please create a new issue 
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_csv-to-parquet-export"></a> [csv-to-parquet-export](#module\_csv-to-parquet-export) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | v8.1.0 |
+| <a name="module_csv-to-parquet-export"></a> [csv-to-parquet-export](#module\_csv-to-parquet-export) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | a7db1252f2c2048ab9a61254869eea061eae1318 |
 | <a name="module_s3_concept_data_output_bucket"></a> [s3\_concept\_data\_output\_bucket](#module\_s3\_concept\_data\_output\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | v9.0.0 |
 | <a name="module_s3_concept_data_uploads_bucket"></a> [s3\_concept\_data\_uploads\_bucket](#module\_s3\_concept\_data\_uploads\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | v9.0.0 |
-| <a name="module_upload_checker"></a> [upload\_checker](#module\_upload\_checker) | https://github.com/terraform-aws-modules/terraform-aws-lambda/commit/a7db1252f2c2048ab9a61254869eea061eae1318 | n/a |
+| <a name="module_upload_checker"></a> [upload\_checker](#module\_upload\_checker) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | a7db1252f2c2048ab9a61254869eea061eae1318 |
 
 ## Resources
 
