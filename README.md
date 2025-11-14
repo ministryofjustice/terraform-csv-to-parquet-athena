@@ -1,6 +1,6 @@
-# Modernisation Platform Terraform Module - CSV-TO-PARQUET-ATHENA
+# CSV to Parquet Terraform Module
 
-[![Standards Icon]][Ministry of Justice Repository Compliance Badge] [![Format Code Icon]][Format Code Link] [![Scorecards Icon]][Scorecards Link] [![SCA Icon]][SCA Link] [![Terraform SCA Icon]][Terraform SCA Link]
+[![Repo Compliance]][Repo Compliance Link]
 
 ## Usage
 
@@ -93,13 +93,6 @@ module "csv-to-parquet-athena" {
 | <a name="module_s3_concept_data_uploads_bucket"></a> [s3\_concept\_data\_uploads\_bucket](#module\_s3\_concept\_data\_uploads\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | v9.0.0 |
 | <a name="module_upload_checker"></a> [upload\_checker](#module\_upload\_checker) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | a7db1252f2c2048ab9a61254869eea061eae1318 |
 
-[Ministry of Justice Repository Compliance Badge]: https://github-community.service.justice.gov.uk/repository-standards/api/terraform-csv-to-parquet-athena/badge)](https://github-community.service.justice.gov.uk/repository-standards/terraform-csv-to-parquet-athena
-[Standards Icon]: https://github-community.service.justice.gov.uk/repository-standards/api/modernisation-platform-terraform-module-template/badge
-[Format Code Icon]: https://img.shields.io/github/actions/workflow/status/ministryofjustice/modernisation-platform-terraform-module-template/format-code.yml?labelColor=231f20&style=for-the-badge&label=Formate%20Code
-[Format Code Link]: https://github.com/ministryofjustice/modernisation-platform-terraform-module-template/actions/workflows/format-code.yml
-[Scorecards Icon]: https://img.shields.io/github/actions/workflow/status/ministryofjustice/modernisation-platform-terraform-module-template/scorecards.yml?branch=main&labelColor=231f20&style=for-the-badge&label=Scorecards
-[Scorecards Link]: https://github.com/ministryofjustice/modernisation-platform-terraform-module-template/actions/workflows/scorecards.yml
-[SCA Icon]: https://img.shields.io/github/actions/workflow/status/ministryofjustice/modernisation-platform-terraform-module-template/code-scanning.yml?branch=main&labelColor=231f20&style=for-the-badge&label=Secure%20Code%20Analysis
-[SCA Link]: https://github.com/ministryofjustice/modernisation-platform-terraform-module-template/actions/workflows/code-scanning.yml
-[Terraform SCA Icon]: https://img.shields.io/github/actions/workflow/status/ministryofjustice/modernisation-platform-terraform-module-template/code-scanning.yml?branch=main&labelColor=231f20&style=for-the-badge&label=Terraform%20Static%20Code%20Analysis
-[Terraform SCA Link]: https://github.com/ministryofjustice/modernisation-platform-terraform-module-template/actions/workflows/terraform-static-analysis.yml
+
+[Repo Compliance]: https://github-community.service.justice.gov.uk/repository-standards/api/terraform-csv-to-parquet-athena/badge
+[Repo Compliance Link]: https://github-community.service.justice.gov.uk/repository-standards/terraform-csv-to-parquet-athena
