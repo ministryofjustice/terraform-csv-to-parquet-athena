@@ -19,7 +19,7 @@ LOAD_MODE = os.getenv(
 s3 = boto3.client("s3")
 
 
-def derive_name_from_key(key: str) -> str:
+def derive_name_from_key(s3_key: str) -> str:
     """
     Convert an S3 CSV key to a valid Athena/Glue table name.
     Raises ValueError if the name contains invalid characters.
