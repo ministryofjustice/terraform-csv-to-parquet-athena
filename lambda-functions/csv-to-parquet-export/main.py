@@ -11,39 +11,44 @@ logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 GLUE_DATABASE = os.getenv("GLUE_DATABASE")
 PARQUET_PREFIX = os.getenv("PARQUET_PREFIX", "")
+
 LOAD_MODE = os.getenv(
     "LOAD_MODE", "incremental"
 ).lower()  # "incremental" or "overwrite"
 
 s3 = boto3.client("s3")
 
-# Accepts optional trailing 'Z' in the timestamp (e.g., 20250902103213Z.csv)
-TIMESTAMP_RE = re.compile(
-    r"""^
-    (?P<name>.+?)           # everything up to the underscore before timestamp
-    _(?P<ts>\d{14})         # YYYYMMDDHHMMSS (14 digits)
-    (?:Z)?                  # optional 'Z'
-    \.csv$
-    """,
-    re.VERBOSE | re.IGNORECASE,
-)
 
+def derive_name_from_key(s3_key: str) -> str:
+    """
+    Convert an S3 CSV key to a valid Athena/Glue table name.
+    Raises ValueError if the name contains invalid characters.
+    """
 
-def sanitize_table_name(name: str) -> str:
-    n = re.sub(r"[^a-zA-Z0-9_]", "_", name).lower()
-    if not re.match(r"^[a-z]", n):
-        n = f"t_{n}"
-    return n[:255]
+    # Extract the filename
+    filename = os.path.basename(s3_key)
 
+    # Remove extension
+    name, ext = os.path.splitext(filename)
+    if ext.lower() != ".csv":
+        raise ValueError(f"Expected a .csv file, got {ext}")
 
-def parse_key(key: str) -> tuple[str, str]:
-    fn = key.split("/")[-1]
-    m = TIMESTAMP_RE.match(fn)
-    if not m:
+    # Take part before first underscore
+    base = name.split("_", 1)[0]
+
+    if not base:
+        raise ValueError(f"No valid name found before underscore in '{filename}'")
+
+    # Check that it contains only letters, numbers, underscores
+    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", base):
         raise ValueError(
-            f"csv_upload_key '{key}' must look like Name_YYYYMMDDHHMMSS.csv (optional trailing 'Z')"
+            f"Invalid table name '{base}'. Must start with a letter and contain only letters, numbers, and underscores."
         )
-    return m.group("name"), m.group("ts")
+
+    # Lowercase and truncate to 255
+    table_name = base.lower()[:255]
+
+    return table_name
 
 
 def ensure_database(db_name: str):
@@ -236,11 +241,9 @@ def handler(event, context):
         out_bucket = event["output_bucket"]
         forced_encoding = event.get("encoding") or os.getenv("CSV_ENCODING")
         load_mode = event.get("load_mode", LOAD_MODE).lower()
+        extraction_timestamp = event["extraction_timestamp"]
 
-        base_name, ts_from_key = parse_key(csv_key)
-        extraction_ts_dt = pd.to_datetime(ts_from_key, format="%Y%m%d%H%M%S", utc=False)
-
-        table_name = sanitize_table_name(base_name)
+        table_name = derive_name_from_key(csv_key)
         glue_db = GLUE_DATABASE
 
         input_path = f"s3://{csv_bucket}/{csv_key}"
@@ -268,7 +271,9 @@ def handler(event, context):
         logger.info(
             f"Reading CSV from {input_path} with encodings {forced_encoding or 'auto-detect'}"
         )
+
         df = read_csv_safely(input_path, explicit_encoding=forced_encoding)
+
         logger.info(
             f"Loaded DataFrame with {len(df)} rows and {len(df.columns)} columns"
         )
@@ -280,11 +285,11 @@ def handler(event, context):
         logger.debug(f"Columns after cleanup: {df.columns.tolist()}")
 
         # Add partition col
-        df["extraction_timestamp"] = extraction_ts_dt
+        df["extraction_timestamp"] = extraction_timestamp
 
         # Write parquet
         logger.info(
-            f"Writing Parquet to {dataset_root} with partition extraction_timestamp={extraction_ts_dt}"
+            f"Writing Parquet to {dataset_root} with partition extraction_timestamp={extraction_timestamp}"
         )
         wr.s3.to_parquet(
             df=df,
@@ -298,15 +303,6 @@ def handler(event, context):
         logger.info(
             f"Successfully wrote {len(df)} records to Glue table {glue_db}.{table_name}"
         )
-
-        # These causes a double trigger for the file, as its written to ther upload bucket. Removed until
-        # we add an archive bucket
-        # result = move_to_raw_history(
-        #     bucket=csv_bucket,
-        #     src_key=csv_key,
-        #     table_name=table_name
-        # )
-        # logger.info(f"Archived source file to {result['archived_to']}")
 
     except Exception as e:
         logger.exception(f"Error converting CSV to Parquet: {str(e)}")
