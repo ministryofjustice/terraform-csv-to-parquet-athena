@@ -16,6 +16,11 @@ variable "load_mode" {
   }
 }
 
+variable "lambda_memory_size" {
+  type    = number
+  default = 4096
+}
+
 variable "tags" {
   type        = map(string)
   description = "Common tags to be used by all resources"
