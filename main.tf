@@ -53,7 +53,7 @@ module "csv-to-parquet-export" {
   description     = "Lambda to export data for ${var.name}"
   handler         = "main.handler"
   runtime         = "python3.12"
-  memory_size     = 4096
+  memory_size     = var.lambda_memory_size
   timeout         = 900
   architectures   = ["x86_64"]
   build_in_docker = false

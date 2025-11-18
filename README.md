@@ -1,37 +1,3 @@
-# CSV to Parquet Terraform Module
-
-[![Repo Compliance]][Repo Compliance Link]
-
-## Usage
-
-```hcl
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-    }
-  }
-  required_version = "~> 1.5"
-}
-
-module "csv-to-parquet-athena" {
-
-  source = "github.com/ministryofjustice/terraform-csv-to-parquet-athena?ref=develop"
-
-  name                  = "name-of-your-application"
-  kms_key_arn           = "kms-key-arn"
-  load_mode             = "full" or "overwrite"
-
-  tags = {
-    business-unit = "example"
-    application   = "example"
-    is-production = "false"
-    owner         = "<team-name>: <team-email>"
-  }
-}
-```
-
 ## Requirements
 
 | Name | Version |
@@ -45,26 +11,14 @@ module "csv-to-parquet-athena" {
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 6.0 |
 
-## Inputs
+## Modules
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_environment"></a> [environment](#input\_environment) | Deployment environment (e.g., dev, test, staging, prod). Used for resource naming, tagging, and conditional settings. | `string` | n/a | yes |
-| <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | The ARN of the KMS key to use for CSV export | `string` | n/a | yes |
-| <a name="input_load_mode"></a> [load\_mode](#input\_load\_mode) | n/a | `string` | `"incremental"` | no |
-| <a name="input_name"></a> [name](#input\_name) | n/a | `string` | n/a | yes |
-| <a name="input_region_replication"></a> [region\_replication](#input\_region\_replication) | AWS Region code for the replication target. | `string` | n/a | yes |
-| <a name="input_tags"></a> [tags](#input\_tags) | Common tags to be used by all resources | `map(string)` | n/a | yes |
-
-## Outputs
-
-| Name | Description |
-|------|-------------|
-| <a name="output_lambda_function_arn"></a> [lambda\_function\_arn](#output\_lambda\_function\_arn) | n/a |
-| <a name="output_lambda_function_name"></a> [lambda\_function\_name](#output\_lambda\_function\_name) | n/a |
-| <a name="output_s3_concept_data_output_bucket"></a> [s3\_concept\_data\_output\_bucket](#output\_s3\_concept\_data\_output\_bucket) | n/a |
-| <a name="output_s3_concept_data_uploads_bucket"></a> [s3\_concept\_data\_uploads\_bucket](#output\_s3\_concept\_data\_uploads\_bucket) | n/a |
-| <a name="output_state_machine_arn"></a> [state\_machine\_arn](#output\_state\_machine\_arn) | n/a |
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_csv-to-parquet-export"></a> [csv-to-parquet-export](#module\_csv-to-parquet-export) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | a7db1252f2c2048ab9a61254869eea061eae1318 |
+| <a name="module_s3_concept_data_output_bucket"></a> [s3\_concept\_data\_output\_bucket](#module\_s3\_concept\_data\_output\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | v9.0.0 |
+| <a name="module_s3_concept_data_uploads_bucket"></a> [s3\_concept\_data\_uploads\_bucket](#module\_s3\_concept\_data\_uploads\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | v9.0.0 |
+| <a name="module_upload_checker"></a> [upload\_checker](#module\_upload\_checker) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | a7db1252f2c2048ab9a61254869eea061eae1318 |
 
 ## Resources
 
@@ -84,18 +38,27 @@ module "csv-to-parquet-athena" {
 | [aws_iam_policy_document.upload_checker_lambda_function](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 
-## Modules
+## Inputs
 
-| Name | Source | Version |
-|------|--------|---------|
-| <a name="module_csv-to-parquet-export"></a> [csv-to-parquet-export](#module\_csv-to-parquet-export) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | a7db1252f2c2048ab9a61254869eea061eae1318 |
-| <a name="module_s3_concept_data_output_bucket"></a> [s3\_concept\_data\_output\_bucket](#module\_s3\_concept\_data\_output\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | v9.0.0 |
-| <a name="module_s3_concept_data_uploads_bucket"></a> [s3\_concept\_data\_uploads\_bucket](#module\_s3\_concept\_data\_uploads\_bucket) | github.com/ministryofjustice/modernisation-platform-terraform-s3-bucket | v9.0.0 |
-| <a name="module_upload_checker"></a> [upload\_checker](#module\_upload\_checker) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda | a7db1252f2c2048ab9a61254869eea061eae1318 |
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_environment"></a> [environment](#input\_environment) | Deployment environment (e.g., dev, test, staging, prod). Used for resource naming, tagging, and conditional settings. | `string` | n/a | yes |
+| <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | The ARN of the KMS key to use for CSV export | `string` | n/a | yes |
+| <a name="input_lambda_memory_size"></a> [lambda\_memory\_size](#input\_lambda\_memory\_size) | n/a | `number` | `4096` | no |
+| <a name="input_load_mode"></a> [load\_mode](#input\_load\_mode) | n/a | `string` | `"incremental"` | no |
+| <a name="input_name"></a> [name](#input\_name) | n/a | `string` | n/a | yes |
+| <a name="input_region_replication"></a> [region\_replication](#input\_region\_replication) | AWS Region code for the replication target. | `string` | n/a | yes |
+| <a name="input_tags"></a> [tags](#input\_tags) | Common tags to be used by all resources | `map(string)` | n/a | yes |
 
+## Outputs
 
-[Repo Compliance]: https://github-community.service.justice.gov.uk/repository-standards/api/terraform-csv-to-parquet-athena/badge
-[Repo Compliance Link]: https://github-community.service.justice.gov.uk/repository-standards/terraform-csv-to-parquet-athena
+| Name | Description |
+|------|-------------|
+| <a name="output_lambda_function_arn"></a> [lambda\_function\_arn](#output\_lambda\_function\_arn) | n/a |
+| <a name="output_lambda_function_name"></a> [lambda\_function\_name](#output\_lambda\_function\_name) | n/a |
+| <a name="output_s3_concept_data_output_bucket"></a> [s3\_concept\_data\_output\_bucket](#output\_s3\_concept\_data\_output\_bucket) | n/a |
+| <a name="output_s3_concept_data_uploads_bucket"></a> [s3\_concept\_data\_uploads\_bucket](#output\_s3\_concept\_data\_uploads\_bucket) | n/a |
+| <a name="output_state_machine_arn"></a> [state\_machine\_arn](#output\_state\_machine\_arn) | n/a |
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
@@ -144,6 +107,7 @@ module "csv-to-parquet-athena" {
 |------|-------------|------|---------|:--------:|
 | <a name="input_environment"></a> [environment](#input\_environment) | Deployment environment (e.g., dev, test, staging, prod). Used for resource naming, tagging, and conditional settings. | `string` | n/a | yes |
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | The ARN of the KMS key to use for CSV export | `string` | n/a | yes |
+| <a name="input_lambda_memory_size"></a> [lambda\_memory\_size](#input\_lambda\_memory\_size) | n/a | `number` | `4096` | no |
 | <a name="input_load_mode"></a> [load\_mode](#input\_load\_mode) | n/a | `string` | `"incremental"` | no |
 | <a name="input_name"></a> [name](#input\_name) | n/a | `string` | n/a | yes |
 | <a name="input_region_replication"></a> [region\_replication](#input\_region\_replication) | AWS Region code for the replication target. | `string` | n/a | yes |
