@@ -12,11 +12,55 @@ logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 GLUE_DATABASE = os.getenv("GLUE_DATABASE")
 PARQUET_PREFIX = os.getenv("PARQUET_PREFIX", "")
 
-LOAD_MODE = os.getenv(
-    "LOAD_MODE", "incremental"
-).lower()  # "incremental" or "overwrite"
+LOAD_MODE = os.getenv("LOAD_MODE", "overwrite").lower()  # "incremental" or "overwrite"
+
+TABLE_NAMING = os.getenv(
+    "TABLE_NAMING", "use_full_filename"
+).lower()  # "use_full_filename" or "split_at_last_underscore"
 
 s3 = boto3.client("s3")
+
+
+def derive_table_name(s3_key: str) -> str:
+    """
+    Derive table name based on the configured TABLE_NAMING strategy.
+    """
+
+    if TABLE_NAMING == "use_full_filename":
+        return derive_name_from_full_filename(s3_key)
+    elif TABLE_NAMING == "split_at_last_underscore":
+        return derive_name_from_key(s3_key)
+    else:
+        raise ValueError(f"Unknown TABLE_NAMING strategy: {TABLE_NAMING}")
+
+
+def derive_name_from_full_filename(s3_key: str) -> str:
+    """
+    Convert an S3 CSV key to a valid Athena/Glue table name using the full filename.
+    Raises ValueError if the name contains invalid characters.
+    """
+
+    # Extract the filename
+    filename = os.path.basename(s3_key)
+
+    # Remove extension
+    name, ext = os.path.splitext(filename)
+    if ext.lower() != ".csv":
+        raise ValueError(f"Expected a .csv file, got {ext}")
+
+    if not name:
+        raise ValueError(f"No valid name found in '{filename}'")
+
+    # Validate characters
+    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", name):
+        raise ValueError(
+            f"Invalid table name '{name}'. Must start with a letter and contain only letters, numbers, and underscores."
+        )
+
+    # Lowercase and truncate to 255
+    table_name = name.lower()[:255]
+
+    return table_name
 
 
 def derive_name_from_key(s3_key: str) -> str:
@@ -33,13 +77,16 @@ def derive_name_from_key(s3_key: str) -> str:
     if ext.lower() != ".csv":
         raise ValueError(f"Expected a .csv file, got {ext}")
 
-    # Take part before first underscore
-    base = name.split("_", 1)[0]
+    # Take part before the LAST underscore
+    if "_" not in name:
+        raise ValueError(f"No underscore found in '{filename}' to split on")
+
+    base = name.rsplit("_", 1)[0]
 
     if not base:
-        raise ValueError(f"No valid name found before underscore in '{filename}'")
+        raise ValueError(f"No valid name found before last underscore in '{filename}'")
 
-    # Check that it contains only letters, numbers, underscores
+    # Validate characters
     if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", base):
         raise ValueError(
             f"Invalid table name '{base}'. Must start with a letter and contain only letters, numbers, and underscores."
@@ -261,10 +308,19 @@ def handler(event, context):
         logger.debug(f"Ensured Glue database: {glue_db}")
 
         if load_mode == "overwrite":
-            logger.info(f"Overwriting existing dataset at {dataset_root}")
+            logger.info(
+                f"Load mode: Overwrite. Overwriting existing dataset at {dataset_root}"
+            )
+
             _delete_prefix(out_bucket, table_prefix)
             wr.catalog.delete_table_if_exists(database=glue_db, table=table_name)
+
         elif load_mode != "incremental":
+            logger.info(
+                f"Load mode: Incremental. Retaining existing dataset at {dataset_root}"
+            )
+
+        else:
             raise ValueError("load_mode must be 'incremental' or 'overwrite'")
 
         # Read CSV
@@ -291,6 +347,7 @@ def handler(event, context):
         logger.info(
             f"Writing Parquet to {dataset_root} with partition extraction_timestamp={extraction_timestamp}"
         )
+
         wr.s3.to_parquet(
             df=df,
             path=dataset_root,

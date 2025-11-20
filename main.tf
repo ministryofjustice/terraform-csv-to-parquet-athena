@@ -64,6 +64,7 @@ module "csv-to-parquet-export" {
   environment_variables = {
     GLUE_DATABASE = var.name
     LOAD_MODE     = var.load_mode
+    TABLE_NAMING  = var.table_naming
   }
 
   source_path = [{

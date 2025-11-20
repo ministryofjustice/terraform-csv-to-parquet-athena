@@ -9,7 +9,7 @@ variable "kms_key_arn" {
 
 variable "load_mode" {
   type    = string
-  default = "incremental"
+  default = "overwrite"
   validation {
     condition     = contains(["incremental", "overwrite"], var.load_mode)
     error_message = "load_mode must be one of: incremental, overwrite"
@@ -31,7 +31,14 @@ variable "environment" {
   description = "Deployment environment (e.g., dev, test, staging, prod). Used for resource naming, tagging, and conditional settings."
 }
 
-variable "region_replication" {
-  type        = string
-  description = "AWS Region code for the replication target."
+variable "table_naming" {
+  type    = string
+  default = "use_full_filename"
+
+  description = "How to derive a table name from the csv filename. Options are: use_full_filename, split_at_last_underscore"
+  validation {
+    condition     = contains(["use_full_filename", "split_at_last_underscore"], var.table_naming)
+    error_message = "Options are: use_full_filename, split_at_last_underscore"
+  }
 }
+
