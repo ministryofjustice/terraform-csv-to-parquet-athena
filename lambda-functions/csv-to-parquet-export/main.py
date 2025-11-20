@@ -290,7 +290,7 @@ def handler(event, context):
         load_mode = event.get("load_mode", LOAD_MODE).lower()
         extraction_timestamp = event["extraction_timestamp"]
 
-        table_name = derive_name_from_key(csv_key)
+        table_name = derive_table_name(csv_key)
         glue_db = GLUE_DATABASE
 
         input_path = f"s3://{csv_bucket}/{csv_key}"
