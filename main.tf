@@ -62,9 +62,10 @@ module "csv-to-parquet-export" {
   policy_json        = data.aws_iam_policy_document.csv_to_parquet_lambda_function.json
 
   environment_variables = {
-    GLUE_DATABASE = var.name
-    LOAD_MODE     = var.load_mode
-    TABLE_NAMING  = var.table_naming
+    GLUE_DATABASE         = var.name
+    LOAD_MODE             = var.load_mode
+    TABLE_NAMING          = var.table_naming
+    ALLOW_TYPE_CONVERSION = tostring(var.allow_type_conversions)
   }
 
   source_path = [{
