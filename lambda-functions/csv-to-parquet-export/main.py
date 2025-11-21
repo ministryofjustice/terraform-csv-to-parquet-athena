@@ -1,190 +1,191 @@
+import logging
 import os
 import re
-import logging
+from pathlib import PurePosixPath
+from typing import Optional
+
 import boto3
 import awswrangler as wr
 import pandas as pd
 from awswrangler.exceptions import AlreadyExists
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
-GLUE_DATABASE = os.getenv("GLUE_DATABASE")
-PARQUET_PREFIX = os.getenv("PARQUET_PREFIX", "")
-
-LOAD_MODE = os.getenv("LOAD_MODE", "overwrite").lower()  # "incremental" or "overwrite"
-
-TABLE_NAMING = os.getenv(
-    "TABLE_NAMING", "use_full_filename"
-).lower()  # "use_full_filename" or "split_at_last_underscore"
-
+# Global S3 client
 s3 = boto3.client("s3")
 
 
-def derive_table_name(s3_key: str) -> str:
-    """
-    Derive table name based on the configured TABLE_NAMING strategy.
-    """
+def env_bool(name: str, default: bool = False) -> bool:
+    """Interpret an environment variable as a boolean."""
 
-    if TABLE_NAMING == "use_full_filename":
-        return derive_name_from_full_filename(s3_key)
-    elif TABLE_NAMING == "split_at_last_underscore":
-        return derive_name_from_key(s3_key)
-    else:
-        raise ValueError(f"Unknown TABLE_NAMING strategy: {TABLE_NAMING}")
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in {"1", "true", "yes", "y"}
+
+
+def derive_table_name(s3_key: str, name_strategy: str) -> str:
+    """Derive Athena table name from S3 key based on configured strategy."""
+
+    strategies = {
+        "use_full_filename": derive_name_from_full_filename,
+        "split_at_last_underscore": derive_name_from_key,
+    }
+
+    if name_strategy not in strategies:
+        raise ValueError(f"Unknown name_strategy: {name_strategy}")
+
+    return strategies[name_strategy](s3_key)
+
+
+def validate_base(base: str, original: str) -> str:
+    """Ensure base name is Athena-safe and return normalized version."""
+
+    if not re.match(r"^[a-zA-Z][\w]*$", base):
+        raise ValueError(
+            f"Invalid table name '{base}' from '{original}'. "
+            "Must start with a letter and contain only alphanumerics/_"
+        )
+
+    return base.lower()[:255]
 
 
 def derive_name_from_full_filename(s3_key: str) -> str:
-    """
-    Convert an S3 CSV key to a valid Athena/Glue table name using the full filename.
-    Raises ValueError if the name contains invalid characters.
-    """
+    """Derive table name directly from full filename (without extension)."""
 
-    # Extract the filename
-    filename = os.path.basename(s3_key)
-
-    # Remove extension
-    name, ext = os.path.splitext(filename)
+    filename = PurePosixPath(s3_key).name
+    base, ext = os.path.splitext(filename)
     if ext.lower() != ".csv":
-        raise ValueError(f"Expected a .csv file, got {ext}")
 
-    if not name:
-        raise ValueError(f"No valid name found in '{filename}'")
+        raise ValueError(f"Expected a .csv file, got '{ext}'")
+    if not base:
+        raise ValueError(f"No valid base name in '{filename}'")
 
-    # Validate characters
-    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", name):
-        raise ValueError(
-            f"Invalid table name '{name}'. Must start with a letter and contain only letters, numbers, and underscores."
-        )
-
-    # Lowercase and truncate to 255
-    table_name = name.lower()[:255]
-
-    return table_name
+    return validate_base(base, filename)
 
 
 def derive_name_from_key(s3_key: str) -> str:
-    """
-    Convert an S3 CSV key to a valid Athena/Glue table name.
-    Raises ValueError if the name contains invalid characters.
-    """
+    """Derive table name by removing last underscore and suffix from filename."""
 
-    # Extract the filename
-    filename = os.path.basename(s3_key)
+    filename = PurePosixPath(s3_key).name
+    base, ext = os.path.splitext(filename)
 
-    # Remove extension
-    name, ext = os.path.splitext(filename)
     if ext.lower() != ".csv":
-        raise ValueError(f"Expected a .csv file, got {ext}")
+        raise ValueError(f"Expected a .csv file, got '{ext}'")
 
-    # Take part before the LAST underscore
-    if "_" not in name:
+    if "_" not in base:
         raise ValueError(f"No underscore found in '{filename}' to split on")
 
-    base = name.rsplit("_", 1)[0]
+    before_last = base.rsplit("_", 1)[0]
 
-    if not base:
-        raise ValueError(f"No valid name found before last underscore in '{filename}'")
+    if not before_last:
+        raise ValueError(f"No text before last underscore in '{filename}'")
 
-    # Validate characters
-    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", base):
-        raise ValueError(
-            f"Invalid table name '{base}'. Must start with a letter and contain only letters, numbers, and underscores."
-        )
-
-    # Lowercase and truncate to 255
-    table_name = base.lower()[:255]
-
-    return table_name
+    return validate_base(before_last, filename)
 
 
-def ensure_database(db_name: str):
+def ensure_database(db_name: str) -> None:
+    """Ensure Glue database exists."""
+
+    if not db_name:
+        raise ValueError("GLUE_DATABASE environment variable is required")
     try:
         wr.catalog.create_database(name=db_name, exist_ok=True)
     except AlreadyExists:
-        pass  # safe to ignore if a concurrent create sneaks through
+        pass
 
 
-def _delete_prefix(bucket: str, prefix: str):
-    """Delete all objects under s3://bucket/prefix (non-versioned buckets)."""
-    paginator = s3.get_paginator("list_objects_v2")
-    to_delete = {"Objects": []}
+def delete_prefix(s3_client, bucket: str, prefix: str) -> None:
+    """Delete all objects under the given S3 prefix using the given client."""
+
+    paginator = s3_client.get_paginator("list_objects_v2")
+    batch = []
+    total_deleted = 0
+
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
-            to_delete["Objects"].append({"Key": obj["Key"]})
-            if len(to_delete["Objects"]) == 1000:
-                s3.delete_objects(Bucket=bucket, Delete=to_delete)
-                to_delete = {"Objects": []}
-    if to_delete["Objects"]:
-        s3.delete_objects(Bucket=bucket, Delete=to_delete)
+            batch.append({"Key": obj["Key"]})
+            if len(batch) == 1000:
+                s3_client.delete_objects(Bucket=bucket, Delete={"Objects": batch})
+                total_deleted += len(batch)
+                batch.clear()
+
+    if batch:
+        s3_client.delete_objects(Bucket=bucket, Delete={"Objects": batch})
+        total_deleted += len(batch)
+
+    logger.info(f"Deleted {total_deleted} objects from s3://{bucket}/{prefix}")
 
 
-def _deduplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Ensure all column names are unique and Glue-safe.
-    If duplicates exist after sanitization, suffix with _1, _2, ...
-    """
+def deduplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure unique and sanitized column names; never empty."""
+
     seen = {}
     new_cols = []
+
     for col in df.columns:
-        base = re.sub(r"[^a-zA-Z0-9_]", "_", col).lower().strip("_")
-        if base in seen:
-            seen[base] += 1
-            new_cols.append(f"{base}_{seen[base]}")
-        else:
-            seen[base] = 0
-            new_cols.append(base)
+        base = re.sub(r"\W+", "_", col).lower().strip("_")
+        if not base:
+            base = "col"
+        count = seen.get(base, 0)
+        new_col = base if count == 0 else f"{base}_{count}"
+        new_cols.append(new_col)
+        seen[base] = count + 1
+
     df.columns = new_cols
     return df
 
 
-def _clean_nbsp_and_strip(df: pd.DataFrame) -> pd.DataFrame:
-    # Normalize headers
+def clean_nbsp_and_strip(df: pd.DataFrame) -> pd.DataFrame:
+    """Replace non-breaking spaces and strip whitespace from strings in DataFrame."""
+
+    df = df.copy()
     df.columns = [c.replace("\u00a0", " ").strip() for c in df.columns]
-    # Normalize string/object cells
+
     obj_cols = df.select_dtypes(include=["object"]).columns
-    for c in obj_cols:
-        df[c] = df[c].map(
+    df[obj_cols] = df[obj_cols].apply(
+        lambda col: col.map(
             lambda x: x.replace("\u00a0", " ").strip() if isinstance(x, str) else x
         )
+    )
     return df
 
 
-def read_csv_safely(s3_uri: str, explicit_encoding: str | None = None) -> pd.DataFrame:
-    """
-    Try common encodings and let pandas infer the delimiter.
-    Prefer an explicit encoding if provided via env/event.
-    """
+def read_csv_safely(
+    s3_uri: str, explicit_encoding: Optional[str] = None
+) -> pd.DataFrame:
+    """Read CSV from S3 trying multiple encodings if necessary."""
+
     encodings = [explicit_encoding] if explicit_encoding else []
     encodings += ["utf-8", "utf-8-sig", "cp1252", "iso-8859-1"]
     tried = []
-    for enc in [e for e in encodings if e]:
+
+    for enc in filter(None, encodings):
         try:
             return wr.s3.read_csv(
                 s3_uri,
                 encoding=enc,
-                sep=None,  # sniff delimiter
+                sep=None,
                 engine="python",
                 dtype_backend="pyarrow",
                 on_bad_lines="skip",
             )
         except UnicodeDecodeError:
             tried.append(enc)
-            continue
-    raise UnicodeDecodeError(
-        "csv", b"", 0, 1, f"Failed to decode with encodings tried: {', '.join(tried)}"
-    )
+
+    raise ValueError(f"Failed to decode CSV using encodings: {', '.join(tried)}")
 
 
-def _stabilize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Make Athena-friendly types:
-    - All-null object columns -> string
-    - Low-cardinality boolean-like text -> boolean
-    - Parse datetimes when obvious
-    - Otherwise object -> string
-    """
+def stabilize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+    """Attempt to convert object columns to more specific types."""
+
+    df = df.copy()  # Avoid SettingWithCopyWarning
     obj_cols = df.select_dtypes(include=["object"]).columns
+
+    truthy = {"true", "t", "yes", "y", "1"}
+    falsy = {"false", "f", "no", "n", "0"}
+
     for c in obj_cols:
         col = df[c]
 
@@ -194,33 +195,32 @@ def _stabilize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
 
         sample = col.dropna().astype(str).str.strip()
         lower = sample.str.lower()
+        unique = set(lower.unique())
 
-        truthy = {"true", "t", "yes", "y", "1"}
-        falsy = {"false", "f", "no", "n", "0"}
-        unique_vals = set(lower.unique())
-        if unique_vals.issubset(truthy | falsy) and len(unique_vals) <= 2:
+        # Boolean detection
+        if unique.issubset(truthy | falsy) and len(unique) <= 2:
             df[c] = lower.map(
-                lambda x: True if x in truthy else (False if x in falsy else pd.NA)
+                lambda x: x in truthy if x in truthy | falsy else pd.NA
             ).astype("boolean")
             continue
 
-        dt = pd.to_datetime(
-            sample, errors="coerce", utc=False, infer_datetime_format=True
-        )
+        # Datetime detection
+        dt = pd.to_datetime(sample, errors="coerce", infer_datetime_format=True)
         if dt.notna().mean() >= 0.9:
             df[c] = pd.to_datetime(col, errors="coerce")
             continue
 
+        # Numeric detection
         num = pd.to_numeric(sample.str.replace(",", ""), errors="coerce")
         if num.notna().mean() >= 0.9:
-            if (num.dropna() % 1 == 0).all():
-                df[c] = pd.to_numeric(
-                    col.astype(str).str.replace(",", ""), errors="coerce"
-                ).astype("Int64")
-            else:
-                df[c] = pd.to_numeric(
-                    col.astype(str).str.replace(",", ""), errors="coerce"
-                )
+            cleaned = pd.to_numeric(
+                col.astype(str).str.replace(",", ""), errors="coerce"
+            )
+            df[c] = (
+                cleaned.astype("Int64")
+                if cleaned.dropna().mod(1).eq(0).all()
+                else cleaned
+            )
             continue
 
         df[c] = col.astype("string")
@@ -228,139 +228,73 @@ def _stabilize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def move_to_raw_history(
-    *,
-    bucket: str,
-    src_key: str,
-    table_name: str,
-    dest_bucket: str | None = None,
-):
-    """
-    Move s3://bucket/src_key -> s3://(dest_bucket or bucket)/raw_history/<table>/<filename>
-    """
-    filename = src_key.split("/")[-1]
-    dest_bucket = dest_bucket or bucket
-    dest_key = f"raw_history/{table_name}/{filename}"
-
-    # Guard: don't delete if src and dest resolve to the same object
-    if bucket == dest_bucket and src_key == dest_key:
-        raise ValueError(
-            f"Source and destination are identical: s3://{bucket}/{src_key}"
-        )
-
-    # Prepare copy args
-    copy_source = {"Bucket": bucket, "Key": src_key}
-
-    # 1) Copy
-    s3.copy_object(
-        Bucket=dest_bucket,
-        Key=dest_key,
-        CopySource=copy_source,  # or use the quoted string variant
-        MetadataDirective="COPY",
-    )
-
-    # 2) Verify destination exists before deleting source
-    s3.head_object(Bucket=dest_bucket, Key=dest_key)
-
-    # 3) Delete source
-    s3.delete_object(Bucket=bucket, Key=src_key)
-
-    return {"archived_to": f"s3://{dest_bucket}/{dest_key}"}
-
-
 def handler(event, context):
-    """
-    Event:
-    {
-      "csv_upload_bucket": "...",
-      "csv_upload_key": "Asset_20250902103213Z.csv",
-      "extraction_timestamp": "20250902103213Z",
-      "output_bucket": "...",
-      "name": "concept",
-      "load_mode": "incremental" | "overwrite",
-    }
-    """
-    try:
-        logger.info(f"Received event: {event}")
+    """AWS Lambda handler to convert CSV in S3 to Parquet and register in Glue Catalog."""
 
+    logger.info(f"Event received: {event}")
+
+    try:
         csv_bucket = event["csv_upload_bucket"]
         csv_key = event["csv_upload_key"]
-        out_bucket = event["output_bucket"]
-        forced_encoding = event.get("encoding") or os.getenv("CSV_ENCODING")
-        load_mode = event.get("load_mode", LOAD_MODE).lower()
-        extraction_timestamp = event["extraction_timestamp"]
+        output_bucket = event["output_bucket"]
+        extraction_ts = event["extraction_timestamp"]
 
-        table_name = derive_table_name(csv_key)
-        glue_db = GLUE_DATABASE
+        # Optional arguments
+        encoding = event.get("encoding") or os.getenv("CSV_ENCODING")
+        allow_conversion = env_bool("ALLOW_TYPE_CONVERSION", False)
+        load_mode = os.getenv("LOAD_MODE", "overwrite").lower()
+        glue_database = os.getenv("GLUE_DATABASE")
 
-        input_path = f"s3://{csv_bucket}/{csv_key}"
-        base_prefix = f"{PARQUET_PREFIX.strip('/')}/" if PARQUET_PREFIX else ""
-        table_prefix = f"{base_prefix}{table_name}/"
-        dataset_root = f"s3://{out_bucket}/{table_prefix}"
+        if not glue_database:
+            raise ValueError("GLUE_DATABASE environment variable is required")
+
+        table_naming = os.getenv("TABLE_NAMING", "use_full_filename").lower()
+        prefix = os.getenv("PARQUET_PREFIX", "").strip("/")
+
+        table_name = derive_table_name(csv_key, table_naming)
+        table_prefix = f"{prefix}/{table_name}/" if prefix else f"{table_name}/"
+        dataset_root = f"s3://{output_bucket}/{table_prefix}"
 
         logger.info(
-            f"Processing file {input_path} "
-            f"-> table={table_name}, db={glue_db}, mode={load_mode}, dest={dataset_root}"
+            f"CSV: s3://{csv_bucket}/{csv_key} -> {dataset_root} "
+            f"(table={table_name}, db={glue_database}, mode={load_mode})"
         )
 
-        # Ensure Glue database exists
-        ensure_database(glue_db)
-        logger.debug(f"Ensured Glue database: {glue_db}")
+        ensure_database(glue_database)
 
         if load_mode == "overwrite":
-            logger.info(
-                f"Load mode: Overwrite. Overwriting existing dataset at {dataset_root}"
-            )
-
-            _delete_prefix(out_bucket, table_prefix)
-            wr.catalog.delete_table_if_exists(database=glue_db, table=table_name)
+            logger.info("Overwrite mode: clearing existing dataset")
+            delete_prefix(s3, output_bucket, table_prefix)
+            wr.catalog.delete_table_if_exists(glue_database, table_name)
 
         elif load_mode != "incremental":
-            logger.info(
-                f"Load mode: Incremental. Retaining existing dataset at {dataset_root}"
-            )
-
-        else:
             raise ValueError("load_mode must be 'incremental' or 'overwrite'")
 
-        # Read CSV
-        logger.info(
-            f"Reading CSV from {input_path} with encodings {forced_encoding or 'auto-detect'}"
-        )
+        df = read_csv_safely(f"s3://{csv_bucket}/{csv_key}", explicit_encoding=encoding)
+        logger.info(f"Loaded DataFrame: {df.shape[0]} rows / {df.shape[1]} columns")
 
-        df = read_csv_safely(input_path, explicit_encoding=forced_encoding)
+        # Clean, deduplicate columns, convert types
+        df = clean_nbsp_and_strip(df)
+        df = deduplicate_columns(df)
 
-        logger.info(
-            f"Loaded DataFrame with {len(df)} rows and {len(df.columns)} columns"
-        )
+        if allow_conversion:
+            df = stabilize_dtypes(df)
 
-        # Clean + normalize
-        df = _clean_nbsp_and_strip(df)
-        df = _deduplicate_columns(df)
-        df = _stabilize_dtypes(df)
-        logger.debug(f"Columns after cleanup: {df.columns.tolist()}")
-
-        # Add partition col
-        df["extraction_timestamp"] = extraction_timestamp
-
-        # Write parquet
-        logger.info(
-            f"Writing Parquet to {dataset_root} with partition extraction_timestamp={extraction_timestamp}"
-        )
+        # Add partition column
+        df["extraction_timestamp"] = extraction_ts
 
         wr.s3.to_parquet(
             df=df,
             path=dataset_root,
             dataset=True,
             partition_cols=["extraction_timestamp"],
-            database=glue_db,
+            database=glue_database,
             table=table_name,
             schema_evolution=True,
         )
-        logger.info(
-            f"Successfully wrote {len(df)} records to Glue table {glue_db}.{table_name}"
-        )
 
-    except Exception as e:
-        logger.exception(f"Error converting CSV to Parquet: {str(e)}")
+        logger.info(f"Write complete: {glue_database}.{table_name}")
+
+    except Exception:
+        logger.exception("Error converting CSV to Parquet")
         raise
