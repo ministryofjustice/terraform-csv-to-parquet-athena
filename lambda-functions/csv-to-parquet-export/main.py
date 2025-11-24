@@ -86,7 +86,7 @@ def derive_name_from_key(s3_key: str) -> str:
 
 
 def ensure_database(db_name: str) -> None:
-    """Ensure Glue database exists."""
+    """Ensure Glue database exists. Create if not existing; no-op if already exists."""
 
     if not db_name:
         raise ValueError("GLUE_DATABASE environment variable is required")
