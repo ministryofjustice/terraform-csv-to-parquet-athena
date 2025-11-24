@@ -177,10 +177,15 @@ def read_csv_safely(
     raise ValueError(f"Failed to decode CSV using encodings: {', '.join(tried)}")
 
 
-def stabilize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
-    """Attempt to convert object columns to more specific types."""
+def convert_types_where_possible(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert object columns to better types (boolean, datetime, numeric).
+    Empty-null object columns are converted to string via shared helper.
+    """
 
-    df = df.copy()  # Avoid SettingWithCopyWarning
+    df = df.copy()
+    df = enforce_string_on_all_null_object_cols(df)
+
     obj_cols = df.select_dtypes(include=["object"]).columns
 
     truthy = {"true", "t", "yes", "y", "1"}
@@ -189,28 +194,26 @@ def stabilize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     for c in obj_cols:
         col = df[c]
 
-        if not col.notna().any():
-            df[c] = col.astype("string")
-            continue
+        # now we KNOW the column is not fully-null (helper handled that)
 
         sample = col.dropna().astype(str).str.strip()
         lower = sample.str.lower()
         unique = set(lower.unique())
 
-        # Boolean detection
+        # Boolean
         if unique.issubset(truthy | falsy) and len(unique) <= 2:
             df[c] = lower.map(
                 lambda x: x in truthy if x in truthy | falsy else pd.NA
             ).astype("boolean")
             continue
 
-        # Datetime detection
+        # Datetime
         dt = pd.to_datetime(sample, errors="coerce", infer_datetime_format=True)
         if dt.notna().mean() >= 0.9:
             df[c] = pd.to_datetime(col, errors="coerce")
             continue
 
-        # Numeric detection
+        # Numeric
         num = pd.to_numeric(sample.str.replace(",", ""), errors="coerce")
         if num.notna().mean() >= 0.9:
             cleaned = pd.to_numeric(
@@ -223,7 +226,23 @@ def stabilize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
             )
             continue
 
+        # Default fallback → safe string
         df[c] = col.astype("string")
+
+    return df
+
+
+def enforce_string_on_all_null_object_cols(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure any all-null object columns are cast to string for Athena compatibility."""
+
+    df = df.copy()
+    obj_cols = df.select_dtypes(include=["object"]).columns
+
+    for c in obj_cols:
+        col = df[c]
+        
+        if not col.notna().any():  # entirely null column
+            df[c] = col.astype("string")
 
     return df
 
@@ -276,9 +295,10 @@ def handler(event, context):
         # Clean, deduplicate columns, convert types
         df = clean_nbsp_and_strip(df)
         df = deduplicate_columns(df)
+        df = enforce_string_on_all_null_object_cols(df)
 
         if allow_conversion:
-            df = stabilize_dtypes(df)
+            df = convert_types_where_possible(df)
 
         # Add partition column
         df["extraction_timestamp"] = extraction_ts
