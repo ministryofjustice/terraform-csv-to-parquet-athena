@@ -42,3 +42,8 @@ variable "table_naming" {
   }
 }
 
+variable "allow_type_conversions" {
+  type        = bool
+  description = "Allow automatic type conversions in the module"
+  default     = false
+}
