@@ -217,7 +217,7 @@ def convert_types_where_possible(df: pd.DataFrame) -> pd.DataFrame:
 
         # Numeric
         num = pd.to_numeric(sample.str.replace(",", ""), errors="coerce")
-        
+
         if num.notna().mean() >= 0.9:
             cleaned = pd.to_numeric(
                 col.astype(str).str.replace(",", ""), errors="coerce"
