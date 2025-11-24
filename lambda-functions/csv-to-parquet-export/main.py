@@ -169,6 +169,7 @@ def read_csv_safely(
                 sep=None,
                 engine="python",
                 dtype_backend="pyarrow",
+                dtype="string",
                 on_bad_lines="skip",
             )
         except UnicodeDecodeError:
@@ -209,12 +210,14 @@ def convert_types_where_possible(df: pd.DataFrame) -> pd.DataFrame:
 
         # Datetime
         dt = pd.to_datetime(sample, errors="coerce", infer_datetime_format=True)
+
         if dt.notna().mean() >= 0.9:
             df[c] = pd.to_datetime(col, errors="coerce")
             continue
 
         # Numeric
         num = pd.to_numeric(sample.str.replace(",", ""), errors="coerce")
+        
         if num.notna().mean() >= 0.9:
             cleaned = pd.to_numeric(
                 col.astype(str).str.replace(",", ""), errors="coerce"
@@ -240,7 +243,7 @@ def enforce_string_on_all_null_object_cols(df: pd.DataFrame) -> pd.DataFrame:
 
     for c in obj_cols:
         col = df[c]
-        
+
         if not col.notna().any():  # entirely null column
             df[c] = col.astype("string")
 
@@ -290,6 +293,7 @@ def handler(event, context):
             raise ValueError("load_mode must be 'incremental' or 'overwrite'")
 
         df = read_csv_safely(f"s3://{csv_bucket}/{csv_key}", explicit_encoding=encoding)
+
         logger.info(f"Loaded DataFrame: {df.shape[0]} rows / {df.shape[1]} columns")
 
         # Clean, deduplicate columns, convert types
