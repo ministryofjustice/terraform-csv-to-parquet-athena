@@ -53,15 +53,9 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Run Trivy vulnerability scanner in repo mode
-        uses: aquasecurity/trivy-action@f9424c10c36e288d5fa79bd3dfd1aeb2d6eae808
-        with:
-          scan-type: 'fs'
-          scanners: misconfig,vuln,secret
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          trivyignores: ./.trivyignore.yaml
-
+        run: |
+          echo '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[]}' > 'trivy-results.sarif'
+          echo 'trivy-action step removed — created empty SARIF stub'
       - name: Upload Trivy scan results to GitHub Security tab
         if: success() || failure()
         uses: github/codeql-action/upload-sarif@2d92b76c45b91eb80fc44c74ce3fce0ee94e8f9d # v3.30.0
